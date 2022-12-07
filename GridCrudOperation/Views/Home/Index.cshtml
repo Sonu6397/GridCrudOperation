@@ -1,0 +1,220 @@
+﻿@model List<GridCrudOperation.dbo_connt.Customer>
+
+@{
+    Layout = null;
+    WebGrid webGrid = new WebGrid(source: Model, canPage: true, canSort: false);
+}
+
+<!DOCTYPE html>
+
+<html>
+<head>
+    <meta name="viewport" content="width=device-width" />
+    <title>Index</title>
+    <style type="text/css">
+        body {
+            font-family: Arial;
+            font-size: 10pt;
+        }
+
+        .Grid {
+            border: 1px solid #ccc;
+            border-collapse: collapse;
+        }
+
+            .Grid th {
+                background-color: #F7F7F7;
+                font-weight: bold;
+            }
+
+            .Grid th, .Grid td {
+                padding: 5px;
+                width: 150px;
+                border: 1px solid #ccc;
+            }
+
+            .Grid, .Grid table td {
+                border: 0px solid #ccc;
+            }
+
+                .Grid th a, .Grid th a:visited {
+                    color: #333;
+                }
+    </style>
+</head>
+<body>
+    @webGrid.GetHtml(
+        htmlAttributes: new { @id = "WebGrid", @class = "Grid" },
+        columns: webGrid.Columns(
+                 webGrid.Column(header: "Id", format: @<span class="label">@item.Id</span>, style: "Id"),
+webGrid.Column(header: "Name", format: @<span>
+                            <span class="label">@item.Name</span>
+                            <input class="text" type="text" value="@item.Name" style="display:none" />
+                        </span>, style: "Name"),
+webGrid.Column(header: "Country", format: @<span>
+                                    <span class="label">@item.Country</span>
+                                    <input class="text" type="text" value="@item.Country" style="display:none" />
+                                </span>, style: "Country"),
+webGrid.Column(format:@<span class="link">
+                                            <a class="Edit" href="javascript:;">Edit</a>
+                                            <a class="Update" href="javascript:;" style="display:none">Update</a>
+                                            <a class="Cancel" href="javascript:;" style="display:none">Cancel</a>
+                                            <a class="Delete" href="javascript:;">Delete</a>
+                       </span>)))
+    <br />
+    <table border="0" cellpadding="0" cellspacing="0">
+        <tr>
+            <td style="width: 150px">
+                Name:<br />
+                <input type="text" id="txtName" style="width:140px" />
+            </td>
+            <td style="width: 150px">
+                Country:<br />
+                <input type="text" id="txtCountry" style="width:140px" />
+            </td>
+            <td style="width: 100px">
+                <br />
+                <input type="button" id="btnAdd" value="Add" />
+            </td>
+        </tr>
+    </table>
+
+    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
+    <script type="text/javascript" src="https://ajax.cdnjs.com/ajax/libs/json2/20110223/json2.js"></script>
+    <script type="text/javascript">
+        $(function () {
+            var row = $("#WebGrid TBODY tr:eq(0)");
+            if ($("#WebGrid TBODY tr").length > 1) {
+                row.remove();
+            } else {
+                row.find(".label").html("");
+                row.find(".text").val("");
+                row.find(".link").hide();
+            }
+        });
+        function AppendRow(row, Id, name, country) {
+            //Bind CustomerId.
+            $(".Id", row).find(".label").html(Id);
+
+            //Bind Name.
+            $(".Name", row).find(".label").html(name);
+            $(".Name", row).find(".text").val(name);
+
+            //Bind Country.
+            $(".Country", row).find(".label").html(country);
+            $(".Country", row).find(".text").val(country);
+            row.find(".link").show();
+            $("#WebGrid TBODY").append(row);
+        };
+
+        //Add event handler.
+        $("body").on("click", "#btnAdd", function () {
+            var txtName = $("#txtName");
+            var txtCountry = $("#txtCountry");
+            $.ajax({
+                type: "POST",
+                url: "/Home/InsertCustomer",
+                data: '{name: "' + txtName.val() + '", country: "' + txtCountry.val() + '" }',
+                contentType: "application/json; charset=utf-8",
+                dataType: "json",
+                success: function (r) {
+                    var row = $("#WebGrid TBODY tr:last-child").clone();
+                    if (row.find(".label").is(":empty")) {
+                        $("#WebGrid TBODY tr:last-child").remove();
+                    }
+                    AppendRow(row, r.Id, r.Name, r.Country);
+                    txtName.val("");
+                    txtCountry.val("");
+                }
+            });
+        });
+
+        //Edit event handler.
+        $("body").on("click", "#WebGrid TBODY .Edit", function () {
+            var row = $(this).closest("tr");
+            $("td", row).each(function () {
+                if ($(this).find(".text").length > 0) {
+                    $(this).find(".text").show();
+                    $(this).find(".label").hide();
+                }
+            });
+            row.find(".Update").show();
+            row.find(".Cancel").show();
+            row.find(".Delete").hide();
+            $(this).hide();
+        });
+
+        //Update event handler.
+        $("body").on("click", "#WebGrid TBODY .Update", function () {
+            var row = $(this).closest("tr");
+            $("td", row).each(function () {
+                if ($(this).find(".text").length > 0) {
+                    var span = $(this).find(".label");
+                    var input = $(this).find(".text");
+                    span.html(input.val());
+                    span.show();
+                    input.hide();
+                }
+            });
+            row.find(".Edit").show();
+            row.find(".Delete").show();
+            row.find(".Cancel").hide();
+            $(this).hide();
+
+            var customer = {};
+            customer.CustomerId = row.find(".Id").find(".label").html();
+            customer.Name = row.find(".Name").find(".label").html();
+            customer.Country = row.find(".Country").find(".label").html();
+            $.ajax({
+                type: "POST",
+                url: "/Home/UpdateCustomer",
+                data: '{customer:' + JSON.stringify(customer) + '}',
+                contentType: "application/json; charset=utf-8",
+                dataType: "json"
+            });
+        });
+
+        //Cancel event handler.
+        $("body").on("click", "#WebGrid TBODY .Cancel", function () {
+            var row = $(this).closest("tr");
+            $("td", row).each(function () {
+                if ($(this).find(".text").length > 0) {
+                    var span = $(this).find(".label");
+                    var input = $(this).find(".text");
+                    input.val(span.html());
+                    span.show();
+                    input.hide();
+                }
+            });
+            row.find(".Edit").show();
+            row.find(".Delete").show();
+            row.find(".Update").hide();
+            $(this).hide();
+        });
+
+        //Delete event handler.
+        $("body").on("click", "#WebGrid TBODY .Delete", function () {
+            if (confirm("Do you want to delete this row?")) {
+                var row = $(this).closest("tr");
+                var customerId = row.find(".label").html();
+                $.ajax({
+                    type: "POST",
+                    url: "/Home/DeleteCustomer",
+                    data: '{Id: ' + customerId + '}',
+                    contentType: "application/json; charset=utf-8",
+                    dataType: "json",
+                    success: function (response) {
+                        if ($("#WebGrid TBODY tr").length == 1) {
+                            row.find(".label").html("");
+                            row.find(".text").val("");
+                            row.find(".link").hide();
+                        } else {
+                            row.remove();
+                        }
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>
